@@ -2,7 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useMessageStore } from '../stores/message'
 import MessageItem from '../components/MessageItem.vue'
-import CustomIcon from '../components/CustomIcon.vue'
+import CustomIcon from '../components/CustomIcon.vue' 
+import { uuid } from 'vue-uuid'; 
 
 const messageStore = useMessageStore()
 const currentMessages = computed(() => messageStore.messages)
@@ -17,28 +18,33 @@ async function fetchMessages () {
   await messageStore.fetchMessages()
 }
 
-ws.onopen = function () {
-  alert("Connection established")
-};
-ws.onclose = function () {
-  alert("Connection closed")
-};
+// ws.onopen = function () {
+//   alert("Connection established")
+// };
+// ws.onclose = function () {
+//   alert("Connection closed")
+// };
+
 ws.onmessage = function (msg) {
   const parsed = JSON.parse(msg.data)
-  if (parsed.message === 'success') {
+  if (parsed.message === 'ready') {
     fetchMessages()
   }
 };
 
 function onSubmit(e) {
   e.preventDefault()
-  ws.send(JSON.stringify({message: myMessage.value, id: 0}))
+  ws.send(JSON.stringify({ value: myMessage.value, action: 'add', id: uuid.v4() }))
   myMessage.value = ''
 }
 
-function onDelete(messageKey) {
-  console.log('delete')
-  // messageStore.deleteMessage(messageKey)
+function onEdit({ id, updatedValue }) {
+  ws.send(JSON.stringify({ value: updatedValue, action: 'edit', id }))
+  myMessage.value = ''
+}
+
+function onDelete(id) {
+  ws.send(JSON.stringify({ action: 'delete', id }))
 }
 
 onMounted(() => {
@@ -51,10 +57,11 @@ onMounted(() => {
     <div class="comments-wrapper">
       <div class="comments-display">
         <MessageItem
-          v-for="(message, index) in currentMessages"
-          :key="index"
-          :message="message"
+          v-for="({value, id}, index) in currentMessages"
+          :key="id"
+          :message="value"
           @delete="onDelete"
+          @edit="onEdit"
         />
       </div>
       <div class="comments-input-panel">
@@ -102,7 +109,7 @@ input {
   flex-direction: column;
   align-items: flex-end;
   height: 500px;
-  gap: 4px;
+  gap: 6px;
 }
 .comments-input-panel {
   justify-content: flex-end;
@@ -123,7 +130,7 @@ form {
   border-width: 0;
 
   &:hover {
-    background-color: red;
+    transform: scale(1.3, 1.3);
   }
 }
 </style>

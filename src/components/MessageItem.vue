@@ -1,6 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { useMessageStore } from '../stores/message'
+import { computed, nextTick, ref } from 'vue'
 import CustomIcon from './CustomIcon.vue'
 
 const props = defineProps({
@@ -11,14 +10,14 @@ const props = defineProps({
   }
 })
 
-const messageStore = useMessageStore()
+const emits = defineEmits(["delete", "edit"]);
 var currentMessage = computed(() => props.message)
 
 const editInputRef = ref(null)
 const hasHover = ref(false)
 const editMode = ref(false)
 
-function moveCaretAndfocus() {
+async function moveCaretAndfocus() {
   const input = editInputRef.value
   const textNode = input.firstChild
   const range = document.createRange()
@@ -31,9 +30,9 @@ function moveCaretAndfocus() {
     selection.removeAllRanges()
     selection.addRange(range)
   }
-  setTimeout(() => {
-    input.focus()
-  })
+
+  await nextTick()
+  input.focus()
 }
 
 function onEdit() {
@@ -41,9 +40,9 @@ function onEdit() {
   moveCaretAndfocus()
 }
 
-function updateMessage(key, value) {
+function updateMessage(id, updatedValue) {
   editMode.value = false
-  messageStore.updateMessage(key, value)
+  emits('edit', { id, updatedValue })
 }
 </script>
 
@@ -69,11 +68,11 @@ function updateMessage(key, value) {
       {{ currentMessage }}
     </span>
 
-    <div class="context-buttons" :class="{ active: hasHover && !editMode }">
-      <button @click="$emit('delete', this.$.vnode.key)">
+    <div class="context-buttons">
+      <button class="context-button" @click="$emit('delete', this.$.vnode.key)">
         <CustomIcon iconName="delete" />
       </button>
-      <button @click="onEdit">
+      <button class="context-button" @click="onEdit">
         <CustomIcon iconName="edit" />
       </button>
     </div>
@@ -87,6 +86,7 @@ function updateMessage(key, value) {
   flex-direction: column;
   width: auto;
   height: auto;
+  margin: 4px;
   min-width: 50px;
   padding: 4px 8px;
   gap: 4px;
@@ -94,6 +94,10 @@ function updateMessage(key, value) {
   border: var(--item-border);
   border-radius: var(--border-rd-sm);
   background-color: white;
+
+  &:hover {
+    transform: scale(1.1, 1.1);
+  }
 
   &.edit-mode {
     box-shadow:
@@ -126,10 +130,15 @@ function updateMessage(key, value) {
     display: flex;
     gap: 4px;
     align-self: flex-end;
-    opacity: 0.2;
-  }
-  .active {
-    opacity: 1;
+    // opacity: 0.2;
+
+    .context-button {
+      opacity: 0.2;
+
+      &:hover {
+        opacity: 1;
+      }
+    }
   }
 
   .edit-message-input {
